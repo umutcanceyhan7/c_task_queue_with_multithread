@@ -3,9 +3,9 @@
 
 /* Struct for list nodes 
 https://www.geeksforgeeks.org/queue-linked-list-implementation/
-https://www.javatpoint.com/linked-list-implementation-of-queue
 */
 struct task_queue_s* queue = NULL;
+struct list_node_s* list = NULL;
 
 struct list_node_s {
 int data;
@@ -24,7 +24,6 @@ struct task_queue_s {
     struct task_node_s* front;
     struct task_node_s* back;
 };
-
 /* List operations */
 int Insert(int value);
 int Delete(int value);
@@ -34,8 +33,17 @@ void Task_queue(int n); //generate random tasks for the task queue
 void Task_enqueue(int task_num, int task_type, int value); //insert a new task into task queue
 int Task_dequeue(long my_rank, int* task_num_p, int* task_type_p, int* value_p); //take a task from task queue
 
+// Initiate task list
+struct list_node_s* initiate_task_list(){
+    // Create its space in the memory
+    struct list_node_s* tempList = (struct list_node_s*)malloc(sizeof(struct list_node_s));
+    // Initiate variables with null
+    tempList->data = 0;
+    tempList->next = NULL;
+    return tempList;
+}
 // Initiate task queue with initial NULL values
-static struct task_queue_s* initiate_task_queue(){
+struct task_queue_s* initiate_task_queue(){
     // Create its space in the memory
     struct task_queue_s* tempQueue = (struct task_queue_s*)malloc(sizeof(struct task_queue_s));
     // Initiate variables with null
@@ -64,8 +72,6 @@ void Task_queue(int n){
     }
 }
 
-
-
 void Task_enqueue(int task_num, int task_type, int value){
     struct task_node_s* task_node = create_task_node(task_num, task_type, value);
     // If the queue is empty assign initial node to rear and front.
@@ -79,9 +85,97 @@ void Task_enqueue(int task_num, int task_type, int value){
         }
 
 }
-int main(){
-    // Create task queue with given number of tasks
-    Task_queue(5);
+
+int Task_dequeue(long my_rank, int* task_num_p, int* task_type_p, int* value_p){
+    // If the queue is empty
+    if(queue->front == NULL){
+        return -1;
+    }    
+    // Store front node in the temp node.
+    struct task_node_s* temp = queue->front;
+    // Change front with next one
+    queue->front = queue->front->next;
+    // If front becomes NULL change back to NULL as well.
+    if(queue->front == NULL){
+        queue->back = NULL;
+    }
+    free(temp);
+    return 1;
+    
+
+}
+
+struct list_node_s* create_list_node(int value){
+    struct list_node_s* newNode = (struct list_node_s*)malloc(sizeof(struct list_node_s));
+    newNode->data = value;
+    newNode->next = NULL;
+    return newNode;
+}
+
+// If given value is exists removes it and returns 1, otherwise, returns -1
+int Delete(int value){
+    struct list_node_s* tempNode = list;
+    // If the value is first node
+    if(tempNode->data == value){
+        // Return data
+        // Assign next value to first node
+        tempNode = tempNode->next;
+        return 0;
+    }
+    // Iterate over nodes
+    while(tempNode->next != NULL){
+        // We check first node's next if it is the value we will remove second and put third one to its spot
+        if(tempNode->next->data == value){
+            struct list_node_s* removedNode = tempNode->next;
+            // Removed nodes next node assigned to the tempNode's next to complete connection.
+            tempNode->next = removedNode->next;
+            free(removedNode);
+            return 0;
+        }
+        // If condition does not hold pass to next node.
+        tempNode = tempNode->next;
+    }
+    // If we come here it means the desired value does not exists.
+    printf("The value does not exists in the list so we could not delete it.");
+    return -1;
+}
+
+// Creates a new list node with given value and returns 1 after inserting it.
+int Insert(int value){
+    struct list_node_s* newNode = create_list_node(value);
+    struct list_node_s* tempNode = list;
+    if(tempNode == NULL){
+        tempNode = newNode;
+        return 1;
+    }
+    // Iterate over nodes
+    while(tempNode->next != NULL){
+        tempNode = tempNode->next;
+    }
+    // Last node
+    tempNode->next = newNode;
+    //!!!! What is return value?
+    return 1;
+}
+
+// Searches tIf given value is exists removes it and returns 1, otherwise, returns -1
+int Search(int value){
+    struct list_node_s* tempNode = list;
+    if(tempNode == NULL){
+        return -1;
+    }
+    // Iterate over nodes
+    while(tempNode != NULL){
+        if(tempNode->data == value){
+            return 1;
+        }
+        tempNode = tempNode->next;
+    }
+    // Last node
+    return -1;
+}
+
+void print_task_queue(){
     struct task_node_s* tempNode = queue->front;
     for (int i = 0; i < 5; i++)
     {
@@ -91,5 +185,11 @@ int main(){
 
         tempNode = tempNode->next;
     }
+}
+int main(){
+    // Create task queue with given number of tasks
+    Task_queue(5);
+    print_task_queue();
+
     return 0;
 }
