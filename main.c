@@ -1,11 +1,20 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
+#include <unistd.h>
 
 /* Struct for list nodes 
 https://www.geeksforgeeks.org/queue-linked-list-implementation/
 */
 struct task_queue_s* queue = NULL;
 struct list_node_s* list = NULL;
+
+struct pthread_arg_s {
+    long my_rank;
+    int* task_num;
+    int* task_type; 
+    int* value;
+};
 
 struct list_node_s {
 int data;
@@ -87,12 +96,25 @@ void Task_enqueue(int task_num, int task_type, int value){
 }
 
 int Task_dequeue(long my_rank, int* task_num_p, int* task_type_p, int* value_p){
+    printf("BURADAYIM\n");
     // If the queue is empty
     if(queue->front == NULL){
         return -1;
     }    
     // Store front node in the temp node.
-    struct task_node_s* temp = queue->front;
+    struct task_node_s* temp = (struct task_node_s*)malloc(sizeof(struct task_node_s));
+    temp = queue->front;
+    write(1,"deneme\n",sizeof("deneme\n"));
+    // Assign task values to the local pointers
+    printf("%d temp task type\n",temp->task_type);
+    *task_num_p = temp->task_num;
+    *task_type_p = temp->task_type;
+    *value_p = temp->value;
+    printf("%p task type adressss\n", task_type_p);
+    printf("%d task type p\n", *task_type_p);
+
+    /*
+    
     // Change front with next one
     queue->front = queue->front->next;
     // If front becomes NULL change back to NULL as well.
@@ -100,6 +122,8 @@ int Task_dequeue(long my_rank, int* task_num_p, int* task_type_p, int* value_p){
         queue->back = NULL;
     }
     free(temp);
+    
+    */
     return 1;
     
 
@@ -175,6 +199,19 @@ int Search(int value){
     return -1;
 }
 
+void* get_task(){
+    long my_rank;
+    int* task_num = malloc(sizeof(int));
+    int* task_type = malloc(sizeof(int));
+    int* value = malloc(sizeof(int));
+    printf("%p bu sayı sihirli başta null olmalı\n", task_type);
+    // Pass local attributes to the task dequeue function
+    Task_dequeue(my_rank,task_num,task_type,value);
+    printf("%d bu sayı sihirli\n",*task_type);
+    printf("%d bu sayı sihirli\n",*task_num);
+    printf("%d bu sayı sihirli\n",*value);
+    return 0;
+}
 void print_task_queue(){
     struct task_node_s* tempNode = queue->front;
     for (int i = 0; i < 5; i++)
@@ -190,6 +227,10 @@ int main(){
     // Create task queue with given number of tasks
     Task_queue(5);
     print_task_queue();
-
+    pthread_t id;
+    write(1,"THREAD create'den ONCE\n",sizeof("THREAD create'den ONCE\n")); 
+    pthread_create(&id,NULL,&get_task,NULL);
+    write(1,"THREAD join'den ONCE\n",sizeof("THREAD join'den ONCE\n")); 
+    pthread_join(id,NULL);
     return 0;
 }
