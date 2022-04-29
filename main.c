@@ -95,36 +95,36 @@ void exec_task(int thread_id){
 
     // Fill the list with passed arguments
     if(*task_type == 0){
-        printf("Thread %d inserts value -> %d according to task number -> %d\n", thread_id, *value, *task_num);
+        printf("Thread %d | INSERT | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
         pthread_mutex_lock(&my_mutex);
         if(Insert(*value) == 1){
-            printf("Insert process completed successfully\n");
+            printf("SUCCESSFULL | INSERT PROCESS | THREAD %d\n", thread_id);
         }
         else{
-            printf("Insert process failed\n");
+            printf("FAILED | INSERT PROCESS | THREAD: %d\n", thread_id);
         }
         pthread_mutex_unlock(&my_mutex);
 
     }
     else if(*task_type == 1){
-        printf("Thread %d deletes value -> %d according to task number -> %d\n", thread_id, *value, *task_num);
+        printf("Thread %d | DELETE | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
         pthread_mutex_lock(&my_mutex);
         if(Delete(*value) == 1){
-            printf("Delete process completed successfully\n");
+            printf("SUCCESSFUL | DELETE PROCESS | THREAD: %d\n", thread_id);
         }
         else{
-            printf("Delete process failed\n");
+            printf("FAILED | DELETE PROCESS | THREAD: %d\n", thread_id);
         }
         pthread_mutex_unlock(&my_mutex);
     }
     else{
-        printf("Thread %d searches value -> %d according to task number -> %d\n", thread_id, *value, *task_num);
+        printf("Thread %d | SEARCH | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
         pthread_mutex_lock(&my_mutex);
         if(Search(*value) == 1){
-            printf("Search process completed successfully\n");
+            printf("SUCCESSFUL | SEARCH PROCESS | THREAD: %d\n", thread_id);
         }
         else{
-            printf("Search process failed\n");
+            printf("FAILED | SEARCH PROCESS | THREAD: %d\n", thread_id);
         }
         pthread_mutex_unlock(&my_mutex);
     }
@@ -173,15 +173,11 @@ void Task_queue(int n){
     for (int i = 0; i < n; i++)
     {   
         // Enqueue the task
-        Task_enqueue(i, (rand() % 3), (rand()% TASK_COUNT));
+        Task_enqueue((rand() % TASK_COUNT), (rand() % 3), (rand()% 5));
         
         // Signal the thread to dequeue the task
         pthread_cond_signal(&my_cond);
     }   
-
-    conditionMet = 1;
-    write(1,"Condition is met\n",sizeof("Condition is met\n"));
-    pthread_cond_broadcast(&my_cond);
 }
 
 void Task_enqueue(int task_num, int task_type, int value){
@@ -237,77 +233,93 @@ struct list_node_s* create_list_node(int value){
     return newNode;
 }
 
+void print_node_list(){
+    struct list_node_s* tempNode = list;
+    
+    printf("print test list address: %p tempNode address: %p\n", list, tempNode);
+    while(tempNode != NULL)
+    {
+        printf("List data: %d\n", tempNode->data);
+
+        tempNode = tempNode->next;
+        printf("In FOR LOOP | print test list address: %p tempNode address: %p\n", list, tempNode);
+
+    }
+    
+}
+
 // Creates a new list node with given value and returns 1 after inserting it.
 int Insert(int value){
+
+    //0 1 7 8 12
+
+    
     struct list_node_s* newNode = create_list_node(value);
     
-    struct list_node_s* initialListAddress = (struct list_node_s*)malloc(sizeof(struct list_node_s));
-
-    initialListAddress = list;
-
-    // If the node is first node
-    if(list->data == -1 & list->next == NULL){
-        write(1,"first Node will be inserted\n",sizeof("first Node will be inserted\n"));
+    // If list is empty
+    if(list == NULL){
+        
         list = newNode;
-
-        list = initialListAddress;
-        free(initialListAddress);
         return 1;
     }
-    // Iterate over nodes
-    while(list->next != NULL){
-        // If the inserted node bigger than current node
-        if(list->next->data < newNode->data){
-            list = list->next;
-        }
-        // We must put the node between nodes to protect ascending order
-        else{
-            // Put next node to the temp
-            struct list_node_s* temp = list->next;
-            // Change next node with new node
-            list->next = newNode;
-            // Add temp node to the new node's tail
-            newNode->next = temp;
 
-            // Put initial list value back
-            list = initialListAddress;
-            free(initialListAddress);
-            // Exit successfully
+    // List is head pointer so we will store it in local variable to not change it.
+    struct list_node_s* headNode = list;
+
+    // If inserted node is smaller than first(head) node or equal to first node!
+    if(headNode == list){
+        if(headNode->data == newNode->data){
+            write(1, "Duplicate value can not be accepted to the list\n", sizeof("Duplicate value can not be accepted to the list\n"));
+            return 0;
+        }
+        // First node must be updated
+        else if(headNode->data > newNode->data){
+            struct list_node_s* tempNode = headNode;    
+            // Add head node to the new node's tail
+            newNode->next = headNode;
+            // Change head pointer and update head with new node
+            list = newNode;
             return 1;
         }
     }
-    // If there are only 1 node and the inserted one is smaller
-    if(list->data < newNode->data){
-        // The bigger and first node
-        struct list_node_s* temp = list;
-        // Make the smallest node the first node
-        list = newNode;
-        // Put the bigger node to the tail
-        newNode->next = temp;
-
-        // Put initial list value back
-        list = initialListAddress;
-        free(initialListAddress);
-        return 1;
-    }
-    // Last node
-    list->next = newNode;
     
-    // Put initial list value back
-    list = initialListAddress;
-    free(initialListAddress);    
+
+    while(headNode->next != NULL){
+        if(headNode->data == newNode->data){
+            write(1, "Duplicate value can not be accepted to the list\n", sizeof("Duplicate value can not be accepted to the list\n"));
+            return 0;
+        }
+        // Node 1 (headNode) - New node - Node 2 (headNode->next)
+        else if(headNode->data < newNode->data && headNode->next->data > newNode->data){
+            // Node 2 is stored in tempNode
+            struct list_node_s* tempNode = headNode->next;
+            // New node added to node1's tail
+            headNode->next = newNode;
+            // Node2 is added to new node's tail
+            newNode->next = tempNode;
+            return 1;
+        }
+        headNode = headNode->next;
+    }
+
+    // If conditions are met add new node to the tail
+    headNode->next = newNode;
     return 1;
 }
 
 // If given value is exists removes it and returns 1, otherwise, returns -1
 int Delete(int value){
     struct list_node_s* tempNode = list;
+
+    if(tempNode == NULL){
+        return -1;
+    }
     // If the value is first node
     if(tempNode->data == value){
         // Return data
         // Assign next value to first node
-        tempNode = tempNode->next;
-        return 0;
+        list = tempNode->next;
+        return 1;
     }
     // Iterate over nodes
     while(tempNode->next != NULL){
@@ -317,20 +329,18 @@ int Delete(int value){
             // Removed nodes next node assigned to the tempNode's next to complete connection.
             tempNode->next = removedNode->next;
             free(removedNode);
-            return 0;
+            return 1;
         }
         // If condition does not hold pass to next node.
         tempNode = tempNode->next;
     }
     // If we come here it means the desired value does not exists.
-    printf("The value does not exists in the list so we could not delete it.");
     return -1;
 }
 
 // Searches tIf given value is exists removes it and returns 1, otherwise, returns -1
 int Search(int value){
     struct list_node_s* tempNode = list;
-    printf("Initial list address %p\n",tempNode);
     if(tempNode == NULL){
         return -1;
     }
@@ -357,20 +367,7 @@ void print_task_queue(){
     }
 }
 
-void print_node_list(){
-    struct list_node_s* tempNode = list;
-    
-    printf("print test list address: %p tempNode address: %p\n", list, tempNode);
-    while(tempNode != NULL)
-    {
-        printf("List data: %d\n", tempNode->data);
 
-        tempNode = tempNode->next;
-        printf("In FOR LOOP | print test list address: %p tempNode address: %p\n", list, tempNode);
-
-    }
-    
-}
 
 void create_threads(int thread_count, pthread_t ids[]){
     for (int i = 0; i < thread_count; i++)
@@ -388,26 +385,27 @@ void join_threads(int thread_count, pthread_t ids[]){
 }
 
 int main(){
-    THREAD_COUNT = 1;
-    TASK_COUNT = 30;
+    THREAD_COUNT = 2;
+    TASK_COUNT = 15;
     pthread_t ids[THREAD_COUNT];
     // Mutex initialize
     pthread_mutex_init(&my_mutex,NULL);
     // Cond initialize
     pthread_cond_init(&my_cond,NULL);
-    // Initiate task list
-    list = initiate_task_list();
     // Initiate task queue
     queue = initiate_task_queue();
 
     create_threads(THREAD_COUNT, ids);
-    // Create task queue with given number of tasks
-    write(1,"Task queue will be executed!\n",sizeof("Task queue will be executed!\n"));
-    Task_queue(TASK_COUNT);
 
+    // Create task queue with given number of tasks
+    write(1,"Task queue will be executed!\n",sizeof("Task queue will be executed!\n"));    
+    Task_queue(TASK_COUNT);
+    conditionMet = 1;
+    write(1,"Condition is met\n",sizeof("Condition is met\n"));
+    pthread_cond_broadcast(&my_cond);
+    
     join_threads(THREAD_COUNT,ids);
 
-   
     print_node_list();
     
     // Destroy mutex
