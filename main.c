@@ -80,23 +80,28 @@ struct task_node_s* create_task_node(int task_num, int task_type, int value){
 }
 
 // Executes tasks creating local variables and making processes accordingly
-void exec_task(int thread_id){
+int exec_task(int thread_id){
 
     long my_rank;
     int* task_num = malloc(sizeof(int));
     int* task_type = malloc(sizeof(int));
     int* value = malloc(sizeof(int));
+    *value = -1;
 
-    printf("Thread %d is locked for dequeue\n", thread_id);
     pthread_mutex_lock(&my_mutex);
-    Task_dequeue(my_rank,task_num,task_type,value);
+    printf("Thread %d is locked for dequeue\n", thread_id);
+    int returnValue = Task_dequeue(my_rank,task_num,task_type,value);
+    if(returnValue == -1){
+        printf("Thread %d could not take task so returns with 0\n", thread_id);
+        pthread_mutex_unlock(&my_mutex);
+        return 0;
+    }
+    else{
     printf("Dequeue finished thread %d will be unlocked\n", thread_id);
-    pthread_mutex_unlock(&my_mutex);
-
+    }
     // Fill the list with passed arguments
     if(*task_type == 0){
         printf("Thread %d | INSERT | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
-        pthread_mutex_lock(&my_mutex);
         if(Insert(*value) == 1){
             printf("SUCCESSFULL | INSERT PROCESS | THREAD %d\n", thread_id);
         }
@@ -104,11 +109,11 @@ void exec_task(int thread_id){
             printf("FAILED | INSERT PROCESS | THREAD: %d\n", thread_id);
         }
         pthread_mutex_unlock(&my_mutex);
+        return 1;
 
     }
     else if(*task_type == 1){
         printf("Thread %d | DELETE | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
-        pthread_mutex_lock(&my_mutex);
         if(Delete(*value) == 1){
             printf("SUCCESSFUL | DELETE PROCESS | THREAD: %d\n", thread_id);
         }
@@ -116,10 +121,11 @@ void exec_task(int thread_id){
             printf("FAILED | DELETE PROCESS | THREAD: %d\n", thread_id);
         }
         pthread_mutex_unlock(&my_mutex);
+        return 1;
+
     }
-    else{
+    else if(*task_type == 2){
         printf("Thread %d | SEARCH | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
-        pthread_mutex_lock(&my_mutex);
         if(Search(*value) == 1){
             printf("SUCCESSFUL | SEARCH PROCESS | THREAD: %d\n", thread_id);
         }
@@ -127,16 +133,17 @@ void exec_task(int thread_id){
             printf("FAILED | SEARCH PROCESS | THREAD: %d\n", thread_id);
         }
         pthread_mutex_unlock(&my_mutex);
-    }
+        return 1;
 
+    }
+    printf("FAILED | UNKNOWN PROCESS | THREAD: %d\n", thread_id);
+    return 0;
 }
 
 // Single thread executes this function dequeues a task and executes the list command accordingly.
 void* get_task(){
     // Get thread id
-    int thread_id = syscall(__NR_gettid);
-
-    thread_id = thread_id % THREAD_COUNT;
+    pid_t thread_id = gettid() % THREAD_COUNT;
     
     // Lock for wait condition
     pthread_mutex_lock(&my_mutex);
@@ -158,11 +165,14 @@ void* get_task(){
 
     pthread_mutex_lock(&my_mutex);
     while(queue->front != NULL){
-        
+        printf("I have taken extra job here! | THREAD %d\n", thread_id);
         pthread_mutex_unlock(&my_mutex);
         exec_task(thread_id);
     }
-    
+
+    printf("All tasks are finished my job is done!! | THREAD %d\n", thread_id);
+    pthread_cond_signal(&my_cond);
+    pthread_cond_broadcast(&my_cond);
     return 0;
 }
 
@@ -173,7 +183,7 @@ void Task_queue(int n){
     for (int i = 0; i < n; i++)
     {   
         // Enqueue the task
-        Task_enqueue((rand() % TASK_COUNT), (rand() % 3), (rand()% 5));
+        Task_enqueue((rand() % TASK_COUNT), (rand() % 3), (rand()% TASK_COUNT));
         
         // Signal the thread to dequeue the task
         pthread_cond_signal(&my_cond);
@@ -221,7 +231,6 @@ int Task_dequeue(long my_rank, int* task_num_p, int* task_type_p, int* value_p){
     if(queue->front == NULL){
         queue->back = NULL;
     }
-    // We have finished so unlock mutex
     
     return 1;
 }
@@ -235,17 +244,14 @@ struct list_node_s* create_list_node(int value){
 
 void print_node_list(){
     struct list_node_s* tempNode = list;
-    
-    printf("print test list address: %p tempNode address: %p\n", list, tempNode);
+    printf("List data: ");
     while(tempNode != NULL)
     {
-        printf("List data: %d\n", tempNode->data);
+        printf("%d ", tempNode->data);
 
         tempNode = tempNode->next;
-        printf("In FOR LOOP | print test list address: %p tempNode address: %p\n", list, tempNode);
-
     }
-    
+    printf("\n");
 }
 
 // Creates a new list node with given value and returns 1 after inserting it.
@@ -301,7 +307,10 @@ int Insert(int value){
         }
         headNode = headNode->next;
     }
-
+    if(headNode->data == newNode->data){
+        write(1, "Duplicate value can not be accepted to the list\n", sizeof("Duplicate value can not be accepted to the list\n"));
+        return 0;
+    }
     // If conditions are met add new node to the tail
     headNode->next = newNode;
     return 1;
@@ -384,9 +393,20 @@ void join_threads(int thread_count, pthread_t ids[]){
     
 }
 
-int main(){
-    THREAD_COUNT = 2;
-    TASK_COUNT = 15;
+int main(int argc, char* argv[]){
+    if(argc != 3){
+        printf("Missing arguments!\n");
+        printf("Usage: <filename> <thread_count> <task_count>\n");
+        exit(-1);
+    }
+    // User input
+    int THREAD_COUNT_INPUT = atoi(argv[1]);   
+    int TASK_COUNT_INPUT = atoi(argv[2]);
+    // User input finishes
+
+    // Initializes const variables
+    THREAD_COUNT = THREAD_COUNT_INPUT;
+    TASK_COUNT = TASK_COUNT_INPUT;
     pthread_t ids[THREAD_COUNT];
     // Mutex initialize
     pthread_mutex_init(&my_mutex,NULL);
@@ -400,14 +420,16 @@ int main(){
     // Create task queue with given number of tasks
     write(1,"Task queue will be executed!\n",sizeof("Task queue will be executed!\n"));    
     Task_queue(TASK_COUNT);
+    // After inserting all tasks broadcast to all threads
     conditionMet = 1;
     write(1,"Condition is met\n",sizeof("Condition is met\n"));
     pthread_cond_broadcast(&my_cond);
-    
-    join_threads(THREAD_COUNT,ids);
 
+    // Join threads
+    join_threads(THREAD_COUNT,ids);
+    // Print list
     print_node_list();
-    
+
     // Destroy mutex
     pthread_mutex_destroy(&my_mutex);
     // Destroy cond
