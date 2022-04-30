@@ -11,7 +11,7 @@
 https://www.geeksforgeeks.org/queue-linked-list-implementation/
 */
 /* For program execution time
-https://www.techiedelight.com/find-execution-time-c-program/
+https://www.codegrepper.com/code-examples/c/c+program+to+find+execution+time+in+milliseconds
 */
 struct task_queue_s* queue = NULL;
 struct list_node_s* list = NULL;
@@ -93,13 +93,14 @@ int exec_task(int thread_id){
     *value = -1;
 
     pthread_mutex_lock(&my_mutex);
-    //printf("Thread %d is LOCKED for dequeue\n", thread_id);
+    printf("DEQUEUE | Mutex owner: %d | Mutex lock: %d | THREAD %d\n",my_mutex.__data.__owner, my_mutex.__data.__lock, thread_id);
+
+    printf("Thread %d is LOCKED for dequeue\n", thread_id);
     int returnValue = Task_dequeue(my_rank,task_num,task_type,value);
     pthread_mutex_unlock(&my_mutex);
-    //printf("Thread %d is UNLOCKED after dequeue\n", thread_id);
+    printf("Thread %d is UNLOCKED after dequeue\n", thread_id);
 
     if(returnValue == -1){
-        //printf("Thread %d is UNLOCKED could not take\n", thread_id);
         return 0;
     }
 
@@ -107,57 +108,65 @@ int exec_task(int thread_id){
     // Fill the list with passed arguments
     if(*task_type == 0){
         pthread_mutex_lock(&my_mutex);
-        //printf("Thread %d is LOCKED for insert process\n", thread_id);
-
-        //printf("Thread %d | INSERT | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
-        if(Insert(*value) == 1){
-            printf("OKEY | INSERT | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
+        printf("INSERT | Mutex owner: %d | Mutex lock: %d | THREAD %d\n",my_mutex.__data.__owner, my_mutex.__data.__lock, thread_id);
+        printf("Thread %d is LOCKED for insert process\n", thread_id);
+        int returnValue = Insert(*value);
+        pthread_mutex_unlock(&my_mutex);
+        printf("Thread %d is UNLOCKED insert process finished\n", thread_id);
+        if(returnValue == 1){
+            //printf("OKEY | INSERT | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
 
         }
         else{
-            printf("FAIL | INSERT | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
+            //printf("FAIL | INSERT | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
 
         }
-        //printf("Thread %d is UNLOCKED insert process finished\n", thread_id);
-        pthread_mutex_unlock(&my_mutex);
+      
+
         return 1;
 
     }
     else if(*task_type == 1){
         pthread_mutex_lock(&my_mutex);
-        //printf("Thread %d is LOCKED for insert process\n", thread_id);
-        // printf("Thread %d | DELETE | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
-        if(Delete(*value) == 1){
-            printf("SUCCESSFUL | DELETE | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
+        printf("DELETE | Mutex owner: %d | Mutex lock: %d | THREAD %d\n",my_mutex.__data.__owner, my_mutex.__data.__lock, thread_id);
+        printf("Thread %d is LOCKED for delete process\n", thread_id);
+        int returnValue = Delete(*value);
+        pthread_mutex_unlock(&my_mutex);
+        printf("Thread %d is UNLOCKED delete process finished\n", thread_id);
+        if(returnValue == 1){
+            //printf("OKEY | DELETE | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
 
         }
         else{
-            printf("FAIL | DELETE | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
+            //printf("FAIL | DELETE | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
 
         }
-        //printf("Thread %d is UNLOCKED delete process finished\n", thread_id);
-        pthread_mutex_unlock(&my_mutex);
+        
+
         return 1;
 
     }
     
     else if(*task_type == 2){
         pthread_mutex_lock(&my_mutex);
-        //printf("Thread %d is LOCKED for insert process\n", thread_id);
-        //printf("Thread %d | SEARCH | Value: %d | Task Number: %d\n", thread_id, *value, *task_num);
-        if(Search(*value) == 1){
-            printf("SUCCESSFUL | SEARCH | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
+        printf("SEARCH | Mutex owner: %d | Mutex lock: %d | THREAD %d\n",my_mutex.__data.__owner, my_mutex.__data.__lock, thread_id);
+        printf("Thread %d is LOCKED for search process\n", thread_id);
+        int returnValue = Search(*value);
+        pthread_mutex_unlock(&my_mutex);
+        printf("Thread %d is UNLOCKED search process finished\n", thread_id);
+        if(returnValue == 1){
+            //printf("OKEY | SEARCH | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
         }
         else{
-            printf("FAIL | SEARCH | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
+            //printf("FAIL | SEARCH | THREAD: %d | TASK: %d | VALUE: %d\n", thread_id, *task_num, *value);
         }
-        //printf("Thread %d is UNLOCKED search process finished\n", thread_id);
-        pthread_mutex_unlock(&my_mutex);
+        
+
         return 1;
 
     }
 
-    //printf("FAILED | UNKNOWN PROCESS | THREAD: %d\n", thread_id);
+    printf("FAILED | UNKNOWN PROCESS | THREAD: %d\n", thread_id);
     return 0;
 }
 
@@ -437,7 +446,7 @@ void join_threads(int thread_count, pthread_t ids[]){
 
 int main(int argc, char* argv[]){
     // Time calculator
-    time_t begin = time(NULL);
+    clock_t begin = clock();
     // User input checker
     if(argc != 3){
         printf("Missing arguments!\n");
@@ -479,11 +488,12 @@ int main(int argc, char* argv[]){
     pthread_mutex_destroy(&my_mutex);
     // Destroy cond
     pthread_cond_destroy(&my_cond);
-    // Time calculator end!
-    time_t end = time(NULL);
 
+    // Time calculator end!
+    clock_t end = clock();
+    double time_spent = (double)(end-begin)/CLOCKS_PER_SEC;
     // calculate elapsed time by finding difference (end - begin)
-    printf("The elapsed time is %d seconds", (end - begin));
+    printf("The elapsed time is %f miliseconds\n", time_spent);
 
     return 0;
 }
